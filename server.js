@@ -6,6 +6,7 @@ import 'dotenv/config';
 const app = express();
 const port = process.env.PORT || 3000;
 const apiKey = process.env.OPENAI_API_KEY;
+console.log("API key:" + process.env.OPENAI_API_KEY);
 
 async function createServer() {
   const vite = await createViteServer({
