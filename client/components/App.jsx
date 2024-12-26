@@ -3,7 +3,7 @@ import logo from "/assets/openai-logomark.svg";
 import EventLog from "./EventLog";
 import SessionControls from "./SessionControls";
 import ToolPanel from "./ToolPanel";
-import tools, { invokeFunction } from "./Tools";
+import { tools, invokeFunction } from "./Tools";
 
 export default function App() {
   const [isSessionActive, setIsSessionActive] = useState(false);
