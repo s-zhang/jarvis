@@ -2,13 +2,15 @@ function getCurrentWeather(location) {
     return "The weather in " + location + " is 72°F and sunny.";
 }
 
+export { tools, invokeFunction };
+
 export function invokeFunction(functionName, parameters) {
     if (functionName === "get_current_weather") {
         return getCurrentWeather(parameters.location);
     }
 }
 
-export default tools = [
+const tools = [
     {
         "type": "function",
         "function": {
