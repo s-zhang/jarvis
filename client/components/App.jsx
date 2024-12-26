@@ -3,6 +3,7 @@ import logo from "/assets/openai-logomark.svg";
 import EventLog from "./EventLog";
 import SessionControls from "./SessionControls";
 import ToolPanel from "./ToolPanel";
+import tools, { invokeFunction } from "./Tools";
 
 export default function App() {
   const [isSessionActive, setIsSessionActive] = useState(false);
@@ -57,6 +58,8 @@ export default function App() {
     await pc.setRemoteDescription(answer);
 
     peerConnection.current = pc;
+
+
   }
 
   // Stop current session, clean up peer connection and data channel
@@ -107,12 +110,44 @@ export default function App() {
     sendClientEvent({ type: "response.create" });
   }
 
+  function handleToolCall(event) {
+    try {
+      if (
+        event.type === "response.done" &&
+        event.response.output
+      ) {
+        event.response.output.forEach((output) => {
+          if (output.type === "function_call") {
+            results = invokeFunction(output.name, output.arguments);
+            sendClientEvent({
+              type: "function_call.result",
+              result: results,
+            });
+          }
+        });
+      }
+    } catch (err) {
+      console.error("Error in handleToolCall:", err);
+    }
+  }
+
   // Attach event listeners to the data channel when a new one is created
   useEffect(() => {
     if (dataChannel) {
       // Append new server events to the list
       dataChannel.addEventListener("message", (e) => {
-        setEvents((prev) => [JSON.parse(e.data), ...prev]);
+        const eventData = JSON.parse(e.data);
+        setEvents((prev) => [eventData, ...prev]);
+        if (eventData.type === "function_call") {
+          handleToolCall(eventData);
+        } else if (eventData.type === "session.created") {
+          sendClientEvent({
+            type: "session.update",
+            session: {
+              tools: tools,
+            },
+          });
+        }
       });
 
       // Set session active when the data channel is opened
@@ -147,14 +182,14 @@ export default function App() {
             />
           </section>
         </section>
-        <section className="absolute top-0 w-[380px] right-0 bottom-0 p-4 pt-0 overflow-y-auto">
+        {/*<section className="absolute top-0 w-[380px] right-0 bottom-0 p-4 pt-0 overflow-y-auto">
           <ToolPanel
             sendClientEvent={sendClientEvent}
             sendTextMessage={sendTextMessage}
             events={events}
             isSessionActive={isSessionActive}
           />
-        </section>
+        </section>*/}
       </main>
     </>
   );
