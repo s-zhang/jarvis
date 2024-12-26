@@ -28,4 +28,4 @@ const tools = [
     }
 ]
 
-export default { tools, invokeFunction };
+export { tools, invokeFunction };
