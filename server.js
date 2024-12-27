@@ -1,11 +1,13 @@
 import express from 'express';
 import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
+import { BraveSearch } from "brave-search";
 import 'dotenv/config';
 
 const app = express();
 const port = process.env.PORT || 3000;
 const apiKey = process.env.OPENAI_API_KEY;
+const braveSearch = new BraveSearch(process.env.BRAVE_API_KEY);
 
 async function createServer() {
   const vite = await createViteServer({
@@ -39,6 +41,17 @@ async function createServer() {
       console.error('Token generation error:', error);
       res.status(500).json({ error: 'Failed to generate token' });
     }
+  });
+
+  app.get('/api/web-search', async (req, res) => {
+    const webSearchResults = await braveSearch.webSearch(req.query.query, {
+      count: 5,
+      safesearch: "off",
+      search_lang: "en",
+      country: "US",
+      text_decorations: false,
+    });
+    res.json(webSearchResults);
   });
 
   // Handle SSR requests

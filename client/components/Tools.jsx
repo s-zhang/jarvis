@@ -1,20 +1,10 @@
-import 'dotenv/config';
-import { BraveSearch } from "brave-search";
-
-const braveSearch = new BraveSearch(process.env.BRAVE_API_KEY);
-
 function getCurrentWeather(location) {
     return "The weather in " + location + " is 72°F and sunny.";
 }
 
 async function braveWebSearch(query) {
-    const webSearchResults = await braveSearch.webSearch(query, {
-        count: 5,
-        safesearch: "off",
-        search_lang: "en",
-        country: "US",
-        text_decorations: false,
-    });
+    const response = await fetch("/api/web-search?query=" + query);
+    const webSearchResults = await response.json();
     return webSearchResults;
 }
 
