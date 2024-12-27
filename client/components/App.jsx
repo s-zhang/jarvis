@@ -113,11 +113,10 @@ export default function App() {
     sendClientEvent({ type: "response.create" });
   }
 
-  function handleToolCallItem(item) {
-    const result = invokeFunction(item.name, item.arguments);
+  async function processToolCallItem(item) {
+    const result = await invokeFunction(item.name, item.arguments);
     sendClientEvent({
       type: "conversation.item.create",
-      //previous_item_id: item.id,
       item: {
         type: "function_call_output",
         call_id: item.call_id,
@@ -132,17 +131,19 @@ export default function App() {
         event.type === "response.done" &&
         event.response.output
       ) {
-        event.response.output.forEach((output) => {
+        const hasToolCalls = event.response.output.forEach(async (output) => {
           if (output.type === "function_call") {
-            handleToolCallItem(output);
+            await processToolCallItem(output);
+            return true;
           }
+          return false;
         });
 
-        const hasFunctionCall = event.response.output.some(
-          output => output.type === "function_call");
-        if (event.response.status === "completed" && hasFunctionCall) {
-          sendClientEvent({ type: "response.create" });
-        }
+        Promise.all(hasToolCalls).then((results) => {
+          if (results.includes(true)) {
+            sendClientEvent({ type: "response.create" });
+          }
+        });
       }
     } catch (err) {
       console.error("Error in handleToolCall:", err);
