@@ -110,7 +110,20 @@ export default function App() {
     sendClientEvent({ type: "response.create" });
   }
 
-  function handleToolCall(event) {
+  function handleToolCallItem(item) {
+    const result = invokeFunction(item.name, item.arguments);
+    sendClientEvent({
+      type: "conversation.item.create",
+      //previous_item_id: item.id,
+      item: {
+        type: "function_call_output",
+        call_id: item.call_id,
+        output: result,
+      }
+    });
+  }
+
+  function handleToolCallIfNeeded(event) {
     try {
       if (
         event.type === "response.done" &&
@@ -118,13 +131,15 @@ export default function App() {
       ) {
         event.response.output.forEach((output) => {
           if (output.type === "function_call") {
-            results = invokeFunction(output.name, output.arguments);
-            sendClientEvent({
-              type: "function_call.result",
-              result: results,
-            });
+            handleToolCallItem(output);
           }
         });
+
+        const hasFunctionCall = event.response.output.some(
+          output => output.type === "function_call");
+        if (event.response.status === "completed" && hasFunctionCall) {
+          sendClientEvent({ type: "response.create" });
+        }
       }
     } catch (err) {
       console.error("Error in handleToolCall:", err);
@@ -136,11 +151,9 @@ export default function App() {
     if (dataChannel) {
       // Append new server events to the list
       dataChannel.addEventListener("message", (e) => {
-        const eventData = JSON.parse(e.data);
-        setEvents((prev) => [eventData, ...prev]);
-        if (eventData.type === "function_call") {
-          handleToolCall(eventData);
-        } else if (eventData.type === "session.created") {
+        const event = JSON.parse(e.data);
+        setEvents((prev) => [event, ...prev]);
+        if (event.type === "session.created") {
           sendClientEvent({
             type: "session.update",
             session: {
@@ -148,6 +161,8 @@ export default function App() {
             },
           });
         }
+
+        handleToolCallIfNeeded(event);
       });
 
       // Set session active when the data channel is opened
@@ -167,7 +182,7 @@ export default function App() {
         </div>
       </nav>
       <main className="absolute top-16 left-0 right-0 bottom-0">
-        <section className="absolute top-0 left-0 right-[380px] bottom-0 flex">
+        <section className="absolute top-0 left-0 right-0 bottom-0 flex">
           <section className="absolute top-0 left-0 right-0 bottom-32 px-4 overflow-y-auto">
             <EventLog events={events} />
           </section>
