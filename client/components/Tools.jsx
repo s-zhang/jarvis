@@ -4,7 +4,7 @@ function getCurrentWeather(location) {
 
 async function braveWebSearch(query) {
     const response = await fetch("/api/web-search?query=" + query);
-    const webSearchResults = await response.json();
+    const webSearchResults = await response.text();
     return webSearchResults;
 }
 

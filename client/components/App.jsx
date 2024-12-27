@@ -130,7 +130,7 @@ export default function App() {
         event.type === "response.done" &&
         event.response.output
       ) {
-        const hasToolCalls = event.response.output.forEach(async (output) => {
+        const hasToolCalls = event.response.output.map(async (output) => {
           if (output.type === "function_call") {
             await processToolCallItem(output);
             return true;

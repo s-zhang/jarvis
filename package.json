@@ -11,8 +11,6 @@
     "lint": "eslint . --ext .js,.jsx --fix"
   },
   "dependencies": {
-    "@tavily/core": "^0.0.2",
-    "brave-search": "^0.6.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "fastify": "^4.24.3",
