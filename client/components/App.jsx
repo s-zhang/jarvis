@@ -113,7 +113,7 @@ export default function App() {
   }
 
   async function processToolCallItem(item) {
-    const result = await invokeFunction(item.name, item.arguments);
+    const { stop_response, result } = await invokeFunction(item.name, item.arguments);
     sendClientEvent({
       type: "conversation.item.create",
       item: {
@@ -122,6 +122,7 @@ export default function App() {
         output: result,
       }
     });
+    return stop_response;
   }
 
   function handleToolCallIfNeeded(event) {
@@ -130,16 +131,17 @@ export default function App() {
         event.type === "response.done" &&
         event.response.output
       ) {
-        const hasToolCalls = event.response.output.map(async (output) => {
+        const responseDecisions = event.response.output.map(async (output) => {
           if (output.type === "function_call") {
-            await processToolCallItem(output);
-            return true;
+            const stop_response = await processToolCallItem(output);
+            return stop_response ? 2 : 1;
           }
-          return false;
+          return 0;
         });
 
-        Promise.all(hasToolCalls).then((results) => {
-          if (results.includes(true)) {
+        Promise.all(responseDecisions).then((decisions) => {
+          const maxDecision = Math.max(...decisions);
+          if (maxDecision === 1) {
             sendClientEvent({ type: "response.create" });
           }
         });
@@ -200,14 +202,6 @@ export default function App() {
             />
           </section>
         </section>
-        {/*<section className="absolute top-0 w-[380px] right-0 bottom-0 p-4 pt-0 overflow-y-auto">
-          <ToolPanel
-            sendClientEvent={sendClientEvent}
-            sendTextMessage={sendTextMessage}
-            events={events}
-            isSessionActive={isSessionActive}
-          />
-        </section>*/}
       </main>
     </>
   );
