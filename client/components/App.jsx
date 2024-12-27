@@ -11,6 +11,10 @@ export default function App() {
   const peerConnection = useRef(null);
   const audioElement = useRef(null);
 
+  useEffect(() => {
+    startSession();
+  }, []);
+
   async function startSession() {
     // Get an ephemeral key from the Fastify server
     const tokenResponse = await fetch("/token");
