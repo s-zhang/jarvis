@@ -27,10 +27,11 @@ export default function App() {
     pc.ontrack = (e) => (audioElement.current.srcObject = e.streams[0]);
 
     // Add local audio track for microphone input in the browser
-    const ms = await navigator.mediaDevices.getUserMedia({
+    const mediaStream = await navigator.mediaDevices.getUserMedia({
       audio: true,
     });
-    pc.addTrack(ms.getTracks()[0]);
+    pc.addTrack(mediaStream.getTracks()[0]);
+    audioElement.current.srcObject = mediaStream;
 
     // Set up data channel for sending and receiving events
     const dc = pc.createDataChannel("oai-events");
@@ -66,6 +67,10 @@ export default function App() {
   function stopSession() {
     if (dataChannel) {
       dataChannel.close();
+    }
+
+    if (audioElement.current && audioElement.current.srcObject) {
+      audioElement.current.srcObject.getTracks().forEach(track => track.stop());
     }
     if (peerConnection.current) {
       peerConnection.current.close();
