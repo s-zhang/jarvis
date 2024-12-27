@@ -59,8 +59,6 @@ export default function App() {
     await pc.setRemoteDescription(answer);
 
     peerConnection.current = pc;
-
-
   }
 
   // Stop current session, clean up peer connection and data channel
