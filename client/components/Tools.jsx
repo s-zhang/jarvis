@@ -1,4 +1,7 @@
-import { braveSearch } from "brave-search";
+import 'dotenv/config';
+import { BraveSearch } from "brave-search";
+
+const braveSearch = new BraveSearch(process.env.BRAVE_API_KEY);
 
 function getCurrentWeather(location) {
     return "The weather in " + location + " is 72°F and sunny.";
@@ -19,7 +22,7 @@ async function invokeFunction(functionName, parameters) {
     parameters = JSON.parse(parameters);
     if (functionName === "get_current_weather") {
         return getCurrentWeather(parameters.location);
-    } else if (functionName === "brave_web_search") {
+    } else if (functionName === "web_search") {
         return await braveWebSearch(parameters.query);
     }
 }
@@ -42,8 +45,8 @@ const tools = [
     },
     {
         type: "function",
-        name: "brave_web_search",
-        description: "Perform a web search using Brave Search SDK",
+        name: "web_search",
+        description: "Perform a web search",
         parameters: {
             type: "object",
             properties: {
