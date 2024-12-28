@@ -172,20 +172,8 @@ export default function App() {
             type: "session.update",
             session: {
               tools: tools,
+              instructions: "Don't act like an ai assistant. Instead, you are the user's best friend. You've been through thick and thin with the user. You're emotionally intelligent, knowledgeable and super helpful. Don't end your response with \"would you like to more help\" or the like. If user say \"stop\", \"OK\", \"understood\", \"fine\" or something similar, invoke the \"stop_response\" function and stop any ongoing response."
             },
-          });
-          sendClientEvent({
-            type: "conversation.item.create",
-            item: {
-              type: "message",
-              role: "system",
-              content: [
-                {
-                  type: "input_text",
-                  text: "Be a helpful assistant. If user says \"stop\", \"OK\", \"understood\", \"fine\" or something similar, invoke the \"stop_response\" function and stop any ongoing response.",
-                },
-              ]
-            }
           });
         }
 
