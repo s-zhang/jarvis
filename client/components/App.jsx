@@ -12,7 +12,12 @@ export default function App() {
   const audioElement = useRef(null);
 
   useEffect(() => {
-    startSession();
+    // Delaying a bit before starting since without it there's an echo issue
+    const timer = setTimeout(() => {
+      startSession();
+    }, 500);
+
+    return () => clearTimeout(timer);
   }, []);
 
   async function startSession() {
@@ -168,6 +173,19 @@ export default function App() {
             session: {
               tools: tools,
             },
+          });
+          sendClientEvent({
+            type: "conversation.item.create",
+            item: {
+              type: "message",
+              role: "system",
+              content: [
+                {
+                  type: "input_text",
+                  text: "Be a helpful assistant. If user says \"stop\", \"OK\", \"understood\", \"fine\" or something similar, invoke the \"stop_response\" function and stop any ongoing response.",
+                },
+              ]
+            }
           });
         }
 
