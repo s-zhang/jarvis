@@ -1,4 +1,6 @@
 import express from 'express';
+import session from 'express-session';
+import grant from 'grant';
 import https from 'https';
 import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
@@ -72,6 +74,34 @@ async function createServer() {
       res.status(500).json({ error: 'Failed to perform search' });
     }
   });
+
+
+  const googleClientSecret = JSON.parse(fs.readFileSync(process.env.GOOGLE_CLIENT_SECRET_PATH));
+  app
+    .use(session({secret: 'grant', saveUninitialized: true, resave: false}))
+    .use(grant.express({
+      "defaults": {
+        "origin": "https://ps-beluga.tail3d8f4.ts.net:3000",
+        "transport": "session"
+      },
+      "google": {
+        "key": googleClientSecret.web.client_id,
+        "secret": googleClientSecret.web.client_secret,
+        "callback": "/google",
+        "custom_params": {
+          "access_type": "offline",
+          "prompt": "consent"
+        },
+        "scope": [
+          'https://www.googleapis.com/auth/gmail.readonly',
+          'https://www.googleapis.com/auth/gmail.send'
+        ]
+      }
+    }))
+    .get('/google', (req, res) => {
+      
+      res.end(JSON.stringify(req.session.grant.response, null, 2));
+    });
 
   // Handle SSR requests
   app.use('*', async (req, res, next) => {
