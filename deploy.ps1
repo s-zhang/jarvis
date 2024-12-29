@@ -13,6 +13,8 @@ $remotePassword = Read-Host -Prompt "Enter remote password" -AsSecureString
 $localFiles    = @(,".\.env")
 $localFolders  = @(,".\secrets")
 
+$remotePassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto([System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($remotePassword))
+
 # Resolve local root path to full path
 $localRootPath = (Get-Item -Path $localRootPath).FullName
 
