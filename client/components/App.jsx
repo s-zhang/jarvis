@@ -8,17 +8,11 @@ export default function App() {
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [events, setEvents] = useState([]);
   const [dataChannel, setDataChannel] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [lastError, setLastError] = useState(null);
+  const maxRetries = 1;
   const peerConnection = useRef(null);
   const audioElement = useRef(null);
-
-  useEffect(() => {
-    // Delaying a bit before starting since without it there's an echo issue
-    const timer = setTimeout(() => {
-      startSession();
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, []);
 
   async function startSession() {
     // Get an ephemeral key from the Fastify server
@@ -85,6 +79,56 @@ export default function App() {
     setIsSessionActive(false);
     setDataChannel(null);
     peerConnection.current = null;
+  }
+  
+  function initSession() {
+    const sessionConfig = {
+      tools: tools,
+      instructions: "Don't act like an ai assistant. Instead, you are the user's best friend. You've been through thick and thin with the user. You're emotionally intelligent, knowledgeable and super helpful. Don't end your response with \"would you like to more help\", \"let me know if you want to know more\" or the like. If user say \"stop\", \"OK\", \"understood\", \"fine\" or something similar, invoke the \"stop_response\" function and stop any ongoing responses."
+    };
+    // Attach event listeners to the data channel when a new one is created
+    if (dataChannel) {
+      // Append new server events to the list
+      dataChannel.addEventListener("message", async (e) => {
+        const event = JSON.parse(e.data);
+        setEvents((prev) => [event, ...prev]);
+        if (event.type === "session.created") {
+          sendClientEvent({
+            type: "session.update",
+            session: sessionConfig
+          });
+        } else if (event.type === "session.updated"
+          && event.session?.instructions === sessionConfig.instructions) {
+          console.log("Session initialized successfully");
+          if (lastError) {
+            sendClientEvent({
+              type: "response.create",
+              instructions: `Inform the user that the previous session was interrupted due to ${lastError}. This is a new session. Be succinct.`,
+              temperature: 1,
+            });
+          }
+        } else if (event.type === "error") {
+          console.error("Error event:", event);
+          if (retryCount < maxRetries) {
+            stopSession();
+            setRetryCount(retryCount + 1);
+            setLastError(event.error);
+            console.log("Retrying session creation");
+            await startSession();
+          } else {
+            console.error("Max retries reached");
+          }
+        }
+
+        handleToolCallIfNeeded(event);
+      });
+
+      // Set session active when the data channel is opened
+      dataChannel.addEventListener("open", () => {
+        setIsSessionActive(true);
+        setEvents([]);
+      });
+    }
   }
 
   // Send a message to the model
@@ -160,33 +204,16 @@ export default function App() {
     }
   }
 
-  // Attach event listeners to the data channel when a new one is created
   useEffect(() => {
-    if (dataChannel) {
-      // Append new server events to the list
-      dataChannel.addEventListener("message", (e) => {
-        const event = JSON.parse(e.data);
-        setEvents((prev) => [event, ...prev]);
-        if (event.type === "session.created") {
-          sendClientEvent({
-            type: "session.update",
-            session: {
-              tools: tools,
-              instructions: "Don't act like an ai assistant. Instead, you are the user's best friend. You've been through thick and thin with the user. You're emotionally intelligent, knowledgeable and super helpful. Don't end your response with \"would you like to more help\" or the like. If user say \"stop\", \"OK\", \"understood\", \"fine\" or something similar, invoke the \"stop_response\" function and stop any ongoing response."
-            },
-          });
-        }
+    // Delaying a bit before starting since without it there's an echo issue
+    const timer = setTimeout(() => {
+      startSession();
+    }, 500);
 
-        handleToolCallIfNeeded(event);
-      });
+    return () => clearTimeout(timer);
+  }, []);
 
-      // Set session active when the data channel is opened
-      dataChannel.addEventListener("open", () => {
-        setIsSessionActive(true);
-        setEvents([]);
-      });
-    }
-  }, [dataChannel]);
+  useEffect(initSession, [dataChannel]);
 
   return (
     <>

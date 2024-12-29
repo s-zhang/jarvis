@@ -1,9 +1,12 @@
 import express from 'express';
+import https from 'https';
 import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import 'dotenv/config';
 import OpenAI from 'openai';
 
+const key = fs.readFileSync('secrets/self-signed.key');
+const cert = fs.readFileSync('secrets/self-signed.crt');
 const app = express();
 const port = process.env.PORT || 3000;
 const openaiApiKey = process.env.OPENAI_API_KEY;
@@ -88,8 +91,9 @@ async function createServer() {
     }
   });
 
-  app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
+  // Create HTTPS server
+  https.createServer({ key, cert }, app).listen(port, () => {
+    console.log(`HTTPS server running at https://localhost:${port}`);
   });
 }
 
