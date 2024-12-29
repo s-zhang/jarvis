@@ -103,8 +103,10 @@ export default function App() {
           if (lastError) {
             sendClientEvent({
               type: "response.create",
-              instructions: `Inform the user that the previous session was interrupted due to ${lastError}. This is a new session. Be succinct.`,
-              temperature: 1,
+              response: {
+                instructions: `Inform the user that the previous session was interrupted due to ${JSON.stringify(lastError)}. This is a new session. Be succinct.`,
+                temperature: 1,
+              }
             });
           }
         } else if (event.type === "error") {
