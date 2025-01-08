@@ -3,6 +3,7 @@
   "scripts": {
     "dev": "node server.js",
     "start": "node server.js",
+    "prod": "node server.js --prod",
     "build": "npm run build:client && npm run build:server",
     "build:client": "vite build --outDir dist/client",
     "build:server": "vite build --ssr entry-server.jsx --outDir dist/server",

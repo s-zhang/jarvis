@@ -17,6 +17,13 @@ const perplexity = new OpenAI({
   baseURL: 'https://api.perplexity.ai'
 });
 
+// Get command line arguments
+const args = process.argv.slice(2);
+const isProd = args.includes('--prod');
+const origin = isProd 
+  ? "https://pingshans-air.tail3d8f4.ts.net:3000"
+  : "https://localhost:3000";
+
 async function createServer() {
   const vite = await createViteServer({
     server: { middlewareMode: true },
@@ -81,7 +88,7 @@ async function createServer() {
     .use(session({secret: 'grant', saveUninitialized: true, resave: false}))
     .use(grant.express({
       "defaults": {
-        "origin": "https://ps-beluga.tail3d8f4.ts.net:3000",
+        "origin": origin,
         "transport": "session"
       },
       "google": {
@@ -99,7 +106,6 @@ async function createServer() {
       }
     }))
     .get('/google', (req, res) => {
-      
       res.end(JSON.stringify(req.session.grant.response, null, 2));
     });
 
@@ -123,7 +129,7 @@ async function createServer() {
 
   // Create HTTPS server
   https.createServer({ key, cert }, app).listen(port, () => {
-    console.log(`HTTPS server running at https://localhost:${port}`);
+    console.log(`HTTPS server running at ${origin}`);
   });
 }
 
