@@ -6,6 +6,7 @@ import { tools, invokeFunction } from "./Tools";
 
 export default function App() {
   const [isSessionActive, setIsSessionActive] = useState(false);
+  const [isActivating, setIsActivating] = useState(false);
   const [events, setEvents] = useState([]);
   const [dataChannel, setDataChannel] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
@@ -61,6 +62,8 @@ export default function App() {
     await pc.setRemoteDescription(answer);
 
     peerConnection.current = pc;
+
+    setIsActivating(false);
   }
 
   // Stop current session, clean up peer connection and data channel
@@ -206,7 +209,9 @@ export default function App() {
     }
   }
 
+  // Start a new session automatically after the page loads
   useEffect(() => {
+    setIsActivating(true);
     // Delaying a bit before starting since without it there's an echo issue
     const timer = setTimeout(() => {
       startSession();
@@ -238,6 +243,8 @@ export default function App() {
               sendTextMessage={sendTextMessage}
               events={events}
               isSessionActive={isSessionActive}
+              isActivating={isActivating}
+              setIsActivating={setIsActivating}
             />
           </section>
         </section>
