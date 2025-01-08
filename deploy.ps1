@@ -85,6 +85,6 @@ plink -batch "$remoteUser@$remoteHost" -pw $remotePassword `
    git pull && \
    npm install && \
    pm2 delete jarvis 2> /dev/null && \
-   pm2 start npm --name jarvis -- run dev"
+   pm2 start npm --name jarvis -- run prod"
 
 Write-Host "Deployment complete. Use 'pm2 logs jarvis' to view logs on the remote machine."
