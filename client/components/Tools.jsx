@@ -8,6 +8,12 @@ async function webSearch(query) {
     return webSearchResults;
 }
 
+async function getUnreadMessages() {
+    const response = await fetch("/api/gmail/unread-messages");
+    const unreadMessages = await response.text();
+    return unreadMessages;
+}
+
 async function invokeFunction(functionName, parameters) {
     parameters = JSON.parse(parameters);
 
@@ -19,6 +25,8 @@ async function invokeFunction(functionName, parameters) {
         result = await webSearch(parameters.query);
     } else if (functionName === "stop_response") {
         stop_response = true;
+    } else if (functionName === "get_unread_messages") {
+        result = await getUnreadMessages();
     }
 
     return {
@@ -62,6 +70,11 @@ const tools = [
             },
             required: ["query"],
         },
+    },
+    {
+        type: "function",
+        name: "get_unread_messages",
+        description: "Get unread messages from Gmail",
     },
 ]
 

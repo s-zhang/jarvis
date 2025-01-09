@@ -6,6 +6,9 @@ import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import 'dotenv/config';
 import OpenAI from 'openai';
+import initializeDatabase from './db.js';
+import { initializeToken, saveToken, getToken } from './auth.js';
+import { google } from 'googleapis';
 
 const key = fs.readFileSync('secrets/self-signed.key');
 const cert = fs.readFileSync('secrets/self-signed.crt');
@@ -25,6 +28,8 @@ const origin = isProd
   : "https://localhost:3000";
 
 async function createServer() {
+  const db = await initializeDatabase(isProd);
+
   const vite = await createViteServer({
     server: { middlewareMode: true },
     appType: 'custom',
@@ -54,6 +59,62 @@ async function createServer() {
     } catch (error) {
       console.error('Token generation error:', error);
       res.status(500).json({ error: 'Failed to generate token' });
+    }
+  });
+
+  app.get('/api/gmail/unread-messages', async (req, res) => {
+    try {
+      const token = await getToken(db);
+      const oauth2Client = new google.auth.OAuth2();
+      oauth2Client.setCredentials(token);
+      const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+      const response = await gmail.users.messages.list({
+        userId: 'me',
+        q: 'is:unread label:inbox',
+        includeSpamTrash: false,
+        maxResults: 20 // Limit to 20 messages
+      });
+      const messages = response.data.messages;
+      
+      // Get the From, To, CC, Bcc, Subject, Date, and Body of each message
+      const messageDetails = await Promise.all(messages.map(async (message) => {
+        const messageResponse = await gmail.users.messages.get({
+          userId: 'me',
+          id: message.id
+        });
+        const headers = messageResponse.data.payload.headers;
+        const getHeader = (name) => headers.find(header => header.name === name)?.value || '';
+
+        const from = getHeader('From');
+        const to = getHeader('To');
+        const cc = getHeader('Cc');
+        const bcc = getHeader('Bcc');
+        const subject = getHeader('Subject');
+        const date = getHeader('Date');
+        let body = '';
+        const parts = messageResponse.data.payload.parts;
+        if (parts) {
+          const textPart = parts.find(part => part.mimeType === 'text/plain');
+          if (textPart && textPart.body && textPart.body.data) {
+            body = Buffer.from(textPart.body.data, 'base64').toString('utf-8');
+          }
+        }
+
+        return {
+          from,
+          to,
+          cc,
+          bcc,
+          subject,
+          date,
+          body
+        };
+      }));
+
+      res.json(messageDetails);
+    } catch (error) {
+      console.error('Error listing Gmail threads:', error);
+      res.status(500).json({ error: 'Failed to list Gmail threads' });
     }
   });
 
@@ -105,12 +166,20 @@ async function createServer() {
         ]
       }
     }))
-    .get('/google', (req, res) => {
-      res.end(JSON.stringify(req.session.grant.response, null, 2));
+    .get('/google', async (req, res) => {
+      const token = req.session.grant.response;
+      await saveToken(db, token);
+      res.redirect('/');
     });
 
-  // Handle SSR requests
+  // Handle redirect and SSR requests
   app.use('*', async (req, res, next) => {
+    const redirect = await initializeToken(db);
+    if (redirect) {
+      res.redirect(redirect);
+      return;
+    }
+
     const url = req.originalUrl;
     try {
       const template = await vite.transformIndexHtml(
