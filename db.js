@@ -9,10 +9,11 @@ async function initializeDatabase(isProd) {
 
   await db.exec(`
     CREATE TABLE IF NOT EXISTS secrets (
-      key TEXT PRIMARY KEY,
+      key TEXT,
       value TEXT,
-      creationDate INTEGER PRIMARY KEY,
-      expirationDate INTEGER
+      creationDate INTEGER,
+      expirationDate INTEGER,
+      PRIMARY KEY (key, creationDate)
     )
   `);
 
