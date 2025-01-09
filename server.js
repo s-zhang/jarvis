@@ -9,6 +9,7 @@ import OpenAI from 'openai';
 import initializeDatabase from './db.js';
 import { initializeToken, saveToken, getToken, checkAndRefreshToken } from './auth.js';
 import { google } from 'googleapis';
+import { Client as Notion } from "@notionhq/client"
 
 const key = fs.readFileSync('secrets/self-signed.key');
 const cert = fs.readFileSync('secrets/self-signed.crt');
@@ -19,6 +20,7 @@ const perplexity = new OpenAI({
   apiKey: process.env.PERPLEXITY_API_KEY,
   baseURL: 'https://api.perplexity.ai'
 });
+const notion = new Notion({ auth: process.env.NOTION_API_KEY });
 
 // Get command line arguments
 const args = process.argv.slice(2);
@@ -65,6 +67,151 @@ async function createServer() {
       res.status(500).json({ error: 'Failed to generate token' });
     }
   });
+
+  // Notion compound filter only supports 2 levels of and/or, so we need to flatten it into an and array of or arrays or an or array of and arrays.
+
+  function flattenNotionFilter(filter) {
+    const flatten = (node) => {
+      if (node.and) {
+        return node.and.reduce((acc, subNode) => {
+          const flattenedSubNode = flatten(subNode);
+          if (flattenedSubNode.or) {
+            acc.push(...flattenedSubNode.or);
+          } else {
+            acc.push(flattenedSubNode);
+          }
+          return acc;
+        }, []);
+      } else if (node.or) {
+        return { or: node.or.map(flatten) };
+      }
+      return node;
+    };
+
+    const flattenedFilter = flatten(filter);
+    return { and: flattenedFilter };
+  }
+
+  app.get('/api/todos', async (req, res) => {
+    try {
+      const response = await notion.databases.query({
+        database_id: 'b66d6356c2a4470384b06d3970f68517',
+        filter: flattenNotionFilter({
+          and: [
+            {
+              or: [
+                {
+                  property: 'Priority',
+                  select: {
+                    equals: 'Tomorrow'
+                  }
+                },
+                {
+                  property: 'Priority',
+                  select: {
+                    equals: 'Day after'
+                  }
+                },
+                {
+                  property: 'Priority',
+                  select: {
+                    equals: 'This weekend'
+                  }
+                },
+                {
+                  property: 'Priority',
+                  select: {
+                    equals: 'Next weekend'
+                  }
+                },
+                {
+                  property: 'Priority',
+                  select: {
+                    equals: 'Next week'
+                  }
+                },
+                {
+                  property: 'Priority',
+                  select: {
+                    equals: '2 weeks'
+                  }
+                },
+                {
+                  and: [
+                    {
+                      property: 'Tag',
+                      multi_select: {
+                        does_not_contain: 'Holiday'
+                      }
+                    },
+                    {
+                      property: 'Priority',
+                      select: {
+                        equals: '4 weeks'
+                      }
+                    }
+                  ]
+                },
+                {
+                  and: [
+                    {
+                      property: 'Tag',
+                      multi_select: {
+                        does_not_contain: 'Holiday'
+                      }
+                    },
+                    {
+                      property: 'Priority',
+                      select: {
+                        equals: '3 months'
+                      }
+                    }
+                  ]
+                },
+                {
+                  and: [
+                    {
+                      property: 'Tag',
+                      multi_select: {
+                        does_not_contain: 'Holiday'
+                      }
+                    },
+                    {
+                      property: 'Priority',
+                      select: {
+                        equals: 'More than 3 months'
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              or: [
+                {
+                  property: 'Status',
+                  select: {
+                    equals: 'To-do'
+                  }
+                },
+                {
+                  property: 'Status',
+                  select: {
+                    equals: 'In progress'
+                  }
+                }
+              ]
+            }
+          ]
+        })
+      });
+      res.json(response);
+    } catch (error) {
+      console.error('Error querying Notion database:', error);
+      res.status(500).json({ error: 'Failed to query Notion database' });
+    }
+  });
+
 
   app.get('/api/gmail/unread-messages', async (req, res) => {
     try {
@@ -146,7 +293,6 @@ async function createServer() {
       res.status(500).json({ error: 'Failed to perform search' });
     }
   });
-
 
   const googleClientSecret = JSON.parse(fs.readFileSync(process.env.GOOGLE_CLIENT_SECRET_PATH));
   app
