@@ -57,16 +57,16 @@ async function getToken(db) {
   return latestSecret ? JSON.parse(latestSecret.value) : null;
 }
 
-async function initializeToken(db) {
+async function initializeToken(db, refreshInterval) {
   const redirect = "/connect/google";
   const latestSecret = await getToken(db);
 
   if (latestSecret) {
     const currentTime = Date.now();
-    const timeToRefresh = latestSecret.expirationDate - currentTime - 60000; // Refresh 1 minute before expiration
+    // Refresh the token refreshInterval milliseconds before expiration
+    const timeToRefresh = latestSecret.expirationDate - currentTime - refreshInterval;
 
     if (timeToRefresh > 0) {
-      setTimeout(() => refreshToken(db, latestSecret), timeToRefresh);
       return null;
     } else {
       const token = await refreshToken(db, latestSecret);
@@ -77,4 +77,19 @@ async function initializeToken(db) {
   }
 }
 
-export { initializeToken, saveToken, refreshToken, getToken };
+async function checkAndRefreshToken(db, interval) {
+  const latestSecret = await getToken(db);
+
+  if (latestSecret) {
+    const currentTime = Date.now();
+    const timeToExpire = latestSecret.expirationDate - currentTime;
+
+    // If the token expires in less than 5 minutes, refresh it
+    if (timeToExpire <= interval) {
+      console.log('Token is about to expire, refreshing...');
+      await refreshToken(db, latestSecret);
+    }
+  }
+}
+
+export { initializeToken, saveToken, refreshToken, getToken, checkAndRefreshToken };

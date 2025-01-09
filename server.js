@@ -7,7 +7,7 @@ import { createServer as createViteServer } from 'vite';
 import 'dotenv/config';
 import OpenAI from 'openai';
 import initializeDatabase from './db.js';
-import { initializeToken, saveToken, getToken } from './auth.js';
+import { initializeToken, saveToken, getToken, checkAndRefreshToken } from './auth.js';
 import { google } from 'googleapis';
 
 const key = fs.readFileSync('secrets/self-signed.key');
@@ -29,6 +29,10 @@ const origin = isProd
 
 async function createServer() {
   const db = await initializeDatabase(isProd);
+
+  const refreshInterval = 5 * 60 * 1000;
+  // Set an interval to check the token every 5 minutes
+  setInterval(() => checkAndRefreshToken(db, refreshInterval), refreshInterval);
 
   const vite = await createViteServer({
     server: { middlewareMode: true },
@@ -174,7 +178,7 @@ async function createServer() {
 
   // Handle redirect and SSR requests
   app.use('*', async (req, res, next) => {
-    const redirect = await initializeToken(db);
+    const redirect = await initializeToken(db, refreshInterval);
     if (redirect) {
       res.redirect(redirect);
       return;
