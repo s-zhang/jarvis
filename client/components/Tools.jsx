@@ -14,6 +14,12 @@ async function getUnreadMessages() {
     return unreadMessages;
 }
 
+async function listTodos() {
+    const response = await fetch("/api/todos/list");
+    const todos = await response.text();
+    return todos;
+}
+
 async function invokeFunction(functionName, parameters) {
     parameters = JSON.parse(parameters);
 
@@ -27,6 +33,8 @@ async function invokeFunction(functionName, parameters) {
         stop_response = true;
     } else if (functionName === "get_unread_messages") {
         result = await getUnreadMessages();
+    } else if (functionName === "list_todos") {
+        result = await listTodos();
     }
 
     return {
@@ -75,6 +83,11 @@ const tools = [
         type: "function",
         name: "get_unread_messages",
         description: "Get unread messages from Gmail",
+    },
+    {
+        type: "function",
+        name: "list_todos",
+        description: "List my todos",
     },
 ]
 

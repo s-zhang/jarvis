@@ -9,7 +9,8 @@
     "build:server": "vite build --ssr entry-server.jsx --outDir dist/server",
     "preview": "vite preview",
     "devinstall": "zx ../../devinstall.mjs",
-    "lint": "eslint . --ext .js,.jsx --fix"
+    "lint": "eslint . --ext .js,.jsx --fix",
+    "test": "jest"
   },
   "dependencies": {
     "@notionhq/client": "^2.2.15",
@@ -35,6 +36,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
+    "jest": "^29.7.0",
     "postcss": "^8.4.31",
     "postcss-nesting": "^12.0.2",
     "postcss-preset-env": "^7.7.1",
