@@ -9,8 +9,8 @@ import OpenAI from 'openai';
 import initializeDatabase from './db.js';
 import { initializeToken, saveToken, getToken, checkAndRefreshToken } from './auth.js';
 import { google } from 'googleapis';
-import { Client as Notion } from "@notionhq/client"
-import { flattenFilter } from './utils/notion.js';
+import { TodoList } from './utils/todolist.js';
+import bodyParser from 'body-parser';
 
 const key = fs.readFileSync('secrets/self-signed.key');
 const cert = fs.readFileSync('secrets/self-signed.crt');
@@ -21,7 +21,7 @@ const perplexity = new OpenAI({
   apiKey: process.env.PERPLEXITY_API_KEY,
   baseURL: 'https://api.perplexity.ai'
 });
-const notion = new Notion({ auth: process.env.NOTION_API_KEY });
+const todoList = new TodoList(process.env.NOTION_API_KEY);
 
 // Get command line arguments
 const args = process.argv.slice(2);
@@ -43,6 +43,8 @@ async function createServer() {
   });
 
   app.use(vite.middlewares);
+
+  app.use(bodyParser.json());
 
   // Serve static files
   app.use(express.static('client/public'));
@@ -71,127 +73,30 @@ async function createServer() {
 
   app.get('/api/todos/list', async (req, res) => {
     try {
-      const response = await notion.databases.query({
-        database_id: 'b66d6356c2a4470384b06d3970f68517',
-        filter: flattenFilter({
-          and: [
-            {
-              or: [
-                {
-                  property: 'Priority',
-                  select: {
-                    equals: 'Today'
-                  }
-                },
-                {
-                  property: 'Priority',
-                  select: {
-                    equals: 'Tomorrow'
-                  }
-                },
-                {
-                  property: 'Priority',
-                  select: {
-                    equals: 'Day after'
-                  }
-                },
-                {
-                  property: 'Priority',
-                  select: {
-                    equals: 'This weekend'
-                  }
-                },
-                {
-                  property: 'Priority',
-                  select: {
-                    equals: 'Next weekend'
-                  }
-                },
-                {
-                  property: 'Priority',
-                  select: {
-                    equals: 'Next week'
-                  }
-                },
-                {
-                  property: 'Priority',
-                  select: {
-                    equals: '2 weeks'
-                  }
-                },
-                {
-                  and: [
-                    {
-                      property: 'Tag',
-                      multi_select: {
-                        does_not_contain: 'Holiday'
-                      }
-                    },
-                    {
-                      or: [
-                        {
-                          property: 'Priority',
-                          select: {
-                            equals: '4 weeks'
-                          }
-                        },
-                        {
-                          property: 'Priority',
-                          select: {
-                            equals: '3 months'
-                          }
-                        },
-                        {
-                          property: 'Priority',
-                          select: {
-                            equals: 'More than 3 months'
-                          }
-                        }
-                      ]
-                    }
-                  ]
-                },
-              ]
-            },
-            {
-              or: [
-                {
-                  property: 'Status',
-                  status: {
-                    equals: 'N'
-                  }
-                },
-                {
-                  property: 'Status',
-                  status: {
-                    equals: 'R'
-                  }
-                },
-                {
-                  property: 'Status',
-                  status: {
-                    equals: 'P'
-                  }
-                }
-              ]
-            }
-          ]
-        })
-      });
-      // extract the page id and the following properties: 'Priority', 'Status', 'Project', 'Name', 'Due Date', 'Tag' for each page
-      const todos = response.results.map(page => ({
-        id: page.id,
-        priority: page.properties.Priority.select?.name,
-        status: page.properties.Status.status?.name,
-        project: page.properties.Project?.multi_select.map(project => project.name) || [],
-        name: page.properties.Name.title[0]?.plain_text || null,
-        dueDate: page.properties['Due Date'].date?.start || null,
-        tag: page.properties.Tag.multi_select.map(tag => tag.name) || []
-      }));
+      const todos = await todoList.listTodos();
       res.json(todos);
     } catch (error) {
-      console.error('Error querying Notion database:', error);
-      res.status(500).json({ error: 'Failed to query Notion database' });
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/todos/create', async (req, res) => {
+    try {
+      const todo = req.body;
+      const result = await todoList.createTodo(todo);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch('/api/todos/update/:id', async (req, res) => {
+    try {
+      const todo = req.body;
+      const result = await todoList.updateTodo(req.params.id, todo);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
     }
   });
 
@@ -207,8 +112,18 @@ async function createServer() {
         includeSpamTrash: false,
         maxResults: 20 // Limit to 20 messages
       });
+
+      if (response.status !== 200) {
+        res.status(response.status).send(response.data);
+        return;
+      }
+
+      if (!response.data.messages) {
+        res.json([]);
+        return;
+      }
       const messages = response.data.messages;
-      
+        
       // Get the From, To, CC, Bcc, Subject, Date, and Body of each message
       const messageDetails = await Promise.all(messages.map(async (message) => {
         const messageResponse = await gmail.users.messages.get({

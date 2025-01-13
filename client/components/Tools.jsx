@@ -1,3 +1,5 @@
+import { schema, schemaWithId } from "../../utils/todolist.js";
+
 function getCurrentWeather(location) {
     return "The weather in " + location + " is 72°F and sunny.";
 }
@@ -20,6 +22,30 @@ async function listTodos() {
     return todos;
 }
 
+async function createTodo(todo) {
+    const response = await fetch("/api/todos/create", {
+        method: "POST",
+        body: JSON.stringify(todo),
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    });
+    const result = await response.text();
+    return result;
+}
+
+async function updateTodo(todo) {
+    const response = await fetch("/api/todos/update/" + todo.id, {
+        method: "PATCH",
+        body: JSON.stringify(todo),
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    });
+    const result = await response.text();
+    return result;
+}
+
 async function invokeFunction(functionName, parameters) {
     parameters = JSON.parse(parameters);
 
@@ -35,6 +61,10 @@ async function invokeFunction(functionName, parameters) {
         result = await getUnreadMessages();
     } else if (functionName === "list_todos") {
         result = await listTodos();
+    } else if (functionName === "create_todo") {
+        result = await createTodo(parameters);
+    } else if (functionName === "update_todo") {
+        result = await updateTodo(parameters);
     }
 
     return {
@@ -87,7 +117,19 @@ const tools = [
     {
         type: "function",
         name: "list_todos",
-        description: "List my todos",
+        description: `List my todos`,
+    },
+    {
+        type: "function",
+        name: "create_todo",
+        description: `Create a new todo. Default to "Today" priority and "N" status if not specified.`,
+        parameters: schema
+    },
+    {
+        type: "function",
+        name: "update_todo",
+        description: `Update a todo`,
+        parameters: schemaWithId
     },
 ]
 

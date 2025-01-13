@@ -1,21 +1,3 @@
-// Notion compound filter only supports 2 levels of and/or, so we need to flatten it into a Disjunctive Normal Form (DNF) using the distribution law.
-
-/**
- * Flattens a Notion-like filter into a two-level DNF structure:
- * 
- *   OR of (AND of leaf-filters)
- * 
- * In the returned object, you'll get something like:
- * 
- * {
- *   or: [
- *     { and: [ /* leaf1, leaf2, ... *\/ ] },
- *     { and: [ /* leaf1, leaf2, ... *\/ ] },
- *     ...
- *   ]
- * }
- */
-
 /**
  * Cross-product utility to combine two arrays of conjunctions.
  * If dnf1 = [ [A], [B] ] and dnf2 = [ [C], [D] ],
@@ -75,9 +57,24 @@ function toDNF(node) {
   return [];
 }
 
+
 /**
- * Main function that flattens any nested `and`/`or` filter
- * into a two-level structure: { or: [ { and: [...] }, ... ] }.
+ * Notion compound filter only supports 2 levels of and/or, so we need to
+ * flatten it into a Disjunctive Normal Form (DNF) using the distribution law.
+ * 
+ * Flattens a Notion-like filter into a two-level DNF structure:
+ * 
+ *   OR of (AND of leaf-filters)
+ * 
+ * In the returned object, you'll get something like:
+ * 
+ * {
+ *   or: [
+ *     { and: [ /* leaf1, leaf2, ... *\/ ] },
+ *     { and: [ /* leaf1, leaf2, ... *\/ ] },
+ *     ...
+ *   ]
+ * }
  *
  * @param {Object} filter - The original Notion-like filter
  * @returns {Object} Flattened filter
