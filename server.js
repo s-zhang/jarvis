@@ -30,6 +30,8 @@ const origin = isProd
   ? "https://pingshans-air.tail3d8f4.ts.net:3000"
   : "https://localhost:3000";
 
+const googleClientSecret = JSON.parse(fs.readFileSync(process.env.GOOGLE_CLIENT_SECRET_PATH));
+
 async function createServer() {
   const db = await initializeDatabase(isProd);
 
@@ -103,7 +105,10 @@ async function createServer() {
   app.get('/api/gmail/unread-messages', async (req, res) => {
     try {
       const token = await getToken(db);
-      const oauth2Client = new google.auth.OAuth2();
+      const oauth2Client = new google.auth.OAuth2({
+        clientId: googleClientSecret.web.client_id,
+        clientSecret: googleClientSecret.web.client_secret
+      })
       oauth2Client.setCredentials(token);
       const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
       const response = await gmail.users.messages.list({
@@ -191,7 +196,6 @@ async function createServer() {
     }
   });
 
-  const googleClientSecret = JSON.parse(fs.readFileSync(process.env.GOOGLE_CLIENT_SECRET_PATH));
   app
     .use(session({secret: 'grant', saveUninitialized: true, resave: false}))
     .use(grant.express({

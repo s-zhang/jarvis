@@ -33,7 +33,8 @@ async function refreshToken(db, currentToken) {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to refresh token: ${response.statusText}`);
+      const responseText = await response.text();
+      throw new Error(`Failed to refresh token: ${responseText}`);
     }
 
     const newToken = await response.json();
