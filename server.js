@@ -196,6 +196,22 @@ async function createServer() {
     }
   });
 
+  app.post('/api/events/add', async (req, res) => {
+    try {
+      const { event_id, source, type, data, timestamp } = req.body;
+
+      await db.run(
+        `INSERT INTO events (event_id, source, type, data, timestamp) VALUES (?, ?, ?, ?, ?)`,
+        [event_id, source, type, JSON.stringify(data), timestamp]
+      );
+
+      res.status(200).json({ message: 'Event added successfully' });
+    } catch (error) {
+      console.error('Error adding event:', error);
+      res.status(500).json({ error: 'Failed to add event' });
+    }
+  });
+
   app
     .use(session({secret: 'grant', saveUninitialized: true, resave: false}))
     .use(grant.express({

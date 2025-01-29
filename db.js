@@ -14,7 +14,15 @@ async function initializeDatabase(isProd) {
       creationDate INTEGER,
       expirationDate INTEGER,
       PRIMARY KEY (key, creationDate)
-    )
+    );
+
+    CREATE TABLE IF NOT EXISTS events (
+      event_id TEXT PRIMARY KEY,
+      source TEXT,
+      type TEXT,
+      data TEXT,
+      timestamp INTEGER
+    );
   `);
 
   return db;

@@ -83,6 +83,29 @@ export default function App() {
     setDataChannel(null);
     peerConnection.current = null;
   }
+
+  async function logEvent(source, event, timestamp) {
+    try {
+      const response = await fetch('/api/events/add', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          event_id: event.event_id,
+          source: source,
+          type: event.type,
+          data: event,
+          timestamp: timestamp,
+        }),
+      });
+      if (!response.ok) {
+        console.error('Failed to add event:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error adding event:', error);
+    }
+  }
   
   function initSession() {
     const sessionConfig = {
@@ -94,6 +117,7 @@ export default function App() {
       // Append new server events to the list
       dataChannel.addEventListener("message", async (e) => {
         const event = JSON.parse(e.data);
+        logEvent('server', event, Date.now());
         setEvents((prev) => [event, ...prev]);
         if (event.type === "session.created") {
           sendClientEvent({
@@ -141,6 +165,7 @@ export default function App() {
     if (dataChannel) {
       message.event_id = message.event_id || crypto.randomUUID();
       dataChannel.send(JSON.stringify(message));
+      logEvent('client', message, Date.now());
       setEvents((prev) => [message, ...prev]);
     } else {
       console.error(
