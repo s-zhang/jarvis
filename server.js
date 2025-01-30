@@ -268,6 +268,21 @@ async function createServer() {
     }
   });
 
+  app.get('/api/conversation_items/list', async (req, res) => {
+    try {
+      const { limit } = req.query;
+      const query = `SELECT type, JSON_REMOVE(JSON_REMOVE(JSON_REMOVE(data, '$.id'), '$.object'), '$.status') AS data, timestamp FROM "conversation_items"
+ORDER BY timestamp DESC
+LIMIT ?`;
+      const params = [limit ? parseInt(limit, 10) : 20];
+      const conversationItems = await db.all(query, params);
+      res.status(200).json(conversationItems);
+    } catch (error) {
+      console.error('Error fetching conversation items:', error);
+      res.status(500).json({ error: 'Failed to fetch conversation items' });
+    }
+  });
+
   app
     .use(session({secret: 'grant', saveUninitialized: true, resave: false}))
     .use(grant.express({

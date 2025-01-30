@@ -169,6 +169,74 @@ export default function App() {
       console.error('Error updating conversation item:', error);
     }
   }
+
+  async function hydratePreviousConversation() {
+    sendClientEvent({
+      type: "conversation.item.create",
+      item: {
+        "type": "message",
+        "role": "user",
+        "content": [
+          {
+            "type": "input_text",
+            "text": "Initialize audio",
+          }
+        ]
+      },
+    });
+    
+    sendClientEvent({
+      type: "response.create",
+      response: {
+        modalities: ["text", "audio"],
+        instructions: `RESPOND WITH EXACT THIS WORD, NO MORE, NO LESS: Ready.`,
+        temperature: 1,
+      }
+    });
+
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    const last = 10;
+    try {
+      const response = await fetch(`/api/conversation_items/list?limit=${last}`);
+      if (!response.ok) {
+        console.error('Failed to fetch conversation items:', response.statusText);
+      } else {
+        const conversationItems = await response.json();
+        //console.log(`Last ${last} conversation items:`, conversationItems);
+
+        const callIds = new Set();
+
+        for (let row of conversationItems.reverse()) {
+          const item = JSON.parse(row.data);
+
+          if (item.type === 'message'
+            && item.content.length > 0
+            && item.content[0].type.endsWith('audio')
+          ) {
+            item.content[0] = {
+              type: item.content[0].type.replace('audio', 'text'),
+              text: item.content[0].transcript
+            };
+          } else if (item.type === 'function_call') {
+            callIds.add(item.call_id);
+          } else if (item.type === 'function_call_output'
+            && !callIds.has(item.call_id)
+          ) {
+            continue;
+          }
+
+          sendClientEvent({
+            type: "conversation.item.create",
+            item: item,
+          });
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+    } catch (error) {
+      console.error('Error hydrating previous conversation', error);
+    }
+  }
   
   function initSession() {
     const sessionConfig = {
@@ -176,7 +244,7 @@ export default function App() {
       input_audio_transcription: {
         model: 'whisper-1'
       },
-      instructions: "Don't act like an ai assistant. Instead, you are the user's best friend. You've been through thick and thin with the user. You're emotionally intelligent, knowledgeable and super helpful. Understand that the user is talking with you using voice, so be concise and to the point, unless the user asks for more details or ask you to explain something. Don't end your response with \"let me know if you would like more help\", \"let me know if you want to know more\" or the like. If user say \"stop\", \"OK\", \"understood\", \"fine\" or something similar, invoke the \"stop_response\" function and stop any ongoing responses."
+      instructions: "Don't act like an ai assistant. Instead, you are the user's best friend. You've been through thick and thin with the user. You're emotionally intelligent, knowledgeable and super helpful. Understand that the user is talking with you using voice, so be concise and to the point, unless the user asks for more details or ask you to explain something. Don't end your response with \"let me know if you would like more help\", \"let me know if you want to know more\" or the like. If user say \"stop\", \"OK\", \"understood\", \"fine\" or something similar, invoke the \"stop_response\" function and stop any ongoing responses. Remember the user is interacting with you using voice, so please respond using voice."
     };
     // Attach event listeners to the data channel when a new one is created
     if (dataChannel) {
@@ -192,6 +260,7 @@ export default function App() {
           });
         } else if (event.type === "session.updated"
           && event.session?.instructions === sessionConfig.instructions) {
+          await hydratePreviousConversation();
           console.log("Session initialized successfully");
           if (lastError) {
             sendClientEvent({
