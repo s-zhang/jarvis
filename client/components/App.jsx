@@ -84,7 +84,7 @@ export default function App() {
     peerConnection.current = null;
   }
 
-  async function logEvent(source, event, timestamp) {
+  async function addEvent(source, event, timestamp) {
     try {
       const response = await fetch('/api/events/add', {
         method: 'POST',
@@ -106,6 +106,69 @@ export default function App() {
       console.error('Error adding event:', error);
     }
   }
+
+  async function addConversationItem(event, timestamp) {
+    try {
+      const response = await fetch('/api/conversation_items/add', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: event.item.id,
+          previousId: event.previous_item_id,
+          type: event.item.type,
+          data: event.item,
+          timestamp: timestamp,
+        }),
+      });
+      if (!response.ok) {
+        console.error('Failed to add conversation item:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error adding conversation item:', error);
+    }
+  }
+
+  async function updateConversationItemTranscript(id, transcript) {
+    try {
+      const response = await fetch('/api/conversation_items/update_transcript', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: id,
+          transcript: transcript,
+        }),
+      });
+      if (!response.ok) {
+        console.error('Failed to update transcript:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error updating transcript:', error);
+    }
+  }
+
+  async function updateConversationItem(id, item) {
+    try {
+      const response = await fetch('/api/conversation_items/update', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: id,
+          data: item,
+        }),
+      });
+      if (!response.ok) {
+        console.error('Failed to update conversation item:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error updating conversation item:', error);
+    }
+  }
   
   function initSession() {
     const sessionConfig = {
@@ -120,7 +183,7 @@ export default function App() {
       // Append new server events to the list
       dataChannel.addEventListener("message", async (e) => {
         const event = JSON.parse(e.data);
-        logEvent('server', event, Date.now());
+        addEvent('server', event, Date.now());
         setEvents((prev) => [event, ...prev]);
         if (event.type === "session.created") {
           sendClientEvent({
@@ -139,6 +202,12 @@ export default function App() {
               }
             });
           }
+        } else if (event.type === "conversation.item.created") {
+          addConversationItem(event, Date.now());
+        } else if (event.type === "conversation.item.input_audio_transcription.completed") {
+          updateConversationItemTranscript(event.item_id, event.transcript);
+        } else if (event.type === "response.output_item.done") {
+          updateConversationItem(event.item.id, event.item);
         } else if (event.type === "error") {
           console.error("Error event:", event);
           if (retryCount < maxRetries) {
@@ -168,7 +237,7 @@ export default function App() {
     if (dataChannel) {
       message.event_id = message.event_id || crypto.randomUUID();
       dataChannel.send(JSON.stringify(message));
-      logEvent('client', message, Date.now());
+      addEvent('client', message, Date.now());
       setEvents((prev) => [message, ...prev]);
     } else {
       console.error(

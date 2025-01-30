@@ -212,6 +212,62 @@ async function createServer() {
     }
   });
 
+  app.post('/api/conversation_items/add', async (req, res) => {
+    try {
+      const { id, previousId, type, data, timestamp } = req.body;
+
+      await db.run(
+        `INSERT INTO conversation_items (id, previousId, type, data, timestamp) VALUES (?, ?, ?, ?, ?)`,
+        [id, previousId, type, JSON.stringify(data), timestamp]
+      );
+
+      res.status(200).json({ message: 'Conversation item added successfully' });
+    } catch (error) {
+      console.error('Error adding conversation item:', error);
+      res.status(500).json({ error: 'Failed to add conversation item' });
+    }
+  });
+
+  app.patch('/api/conversation_items/update_transcript', async (req, res) => {
+    try {
+      const { id, transcript } = req.body;
+
+      const result = await db.run(
+        `UPDATE conversation_items SET data = json_set(data, '$.content[0].transcript', ?) WHERE id = ?`,
+        [transcript, id]
+      );
+
+      if (result.changes === 0) {
+        res.status(404).json({ error: 'Conversation item not found' });
+      } else {
+        res.status(200).json({ message: 'Transcript updated successfully' });
+      }
+    } catch (error) {
+      console.error('Error updating transcript:', error);
+      res.status(500).json({ error: 'Failed to update transcript' });
+    }
+  });
+  
+  app.patch('/api/conversation_items/update', async (req, res) => {
+    try {
+      const { id, data } = req.body;
+
+      const result = await db.run(
+        `UPDATE conversation_items SET data = ? WHERE id = ?`,
+        [JSON.stringify(data), id]
+      );
+
+      if (result.changes === 0) {
+        res.status(404).json({ error: 'Conversation item not found' });
+      } else {
+        res.status(200).json({ message: 'Conversation item updated successfully' });
+      }
+    } catch (error) {
+      console.error('Error updating conversation item:', error);
+      res.status(500).json({ error: 'Failed to update conversation item' });
+    }
+  });
+
   app
     .use(session({secret: 'grant', saveUninitialized: true, resave: false}))
     .use(grant.express({

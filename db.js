@@ -23,6 +23,15 @@ async function initializeDatabase(isProd) {
       data TEXT,
       timestamp INTEGER
     );
+
+    CREATE TABLE IF NOT EXISTS conversation_items (
+      id TEXT PRIMARY KEY,
+      previousId TEXT NULL,
+      type TEXT, -- message OR function_call OR function_call_output
+      data TEXT,
+      timestamp INTEGER,
+      FOREIGN KEY (previousId) REFERENCES conversation_items(id)
+    );
   `);
 
   return db;
