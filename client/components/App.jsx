@@ -11,7 +11,7 @@ export default function App() {
   const [dataChannel, setDataChannel] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
   const [lastError, setLastError] = useState(null);
-  const maxRetries = 1;
+  const maxRetries = 0;
   const peerConnection = useRef(null);
   const audioElement = useRef(null);
 
@@ -262,6 +262,8 @@ export default function App() {
           && event.session?.instructions === sessionConfig.instructions) {
           await hydratePreviousConversation();
           console.log("Session initialized successfully");
+/*
+This new resp9onse conflicts with response in hydratePreviousConversation
           if (lastError) {
             sendClientEvent({
               type: "response.create",
@@ -271,6 +273,7 @@ export default function App() {
               }
             });
           }
+*/
         } else if (event.type === "conversation.item.created") {
           addConversationItem(event, Date.now());
         } else if (event.type === "conversation.item.input_audio_transcription.completed") {
