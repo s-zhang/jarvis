@@ -210,14 +210,19 @@ export default function App() {
         for (let row of conversationItems.reverse()) {
           const item = JSON.parse(row.data);
 
-          if (item.type === 'message'
-            && item.content.length > 0
-            && item.content[0].type.endsWith('audio')
-          ) {
-            item.content[0] = {
-              type: item.content[0].type.replace('audio', 'text'),
-              text: item.content[0].transcript
-            };
+          if (item.type === 'message') {
+            if (item.content.length == 0) {
+              continue;
+            }
+            if (item.content[0].type.endsWith('audio')) {
+              if (!item.content[0].transcript) {
+                continue;
+              }
+              item.content[0] = {
+                type: item.content[0].type.replace('audio', 'text'),
+                text: item.content[0].transcript
+              };
+            }
           } else if (item.type === 'function_call') {
             callIds.add(item.call_id);
           } else if (item.type === 'function_call_output'
