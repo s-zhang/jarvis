@@ -1,8 +1,6 @@
-# OpenAI Realtime Console
+# Assistant powered by OpenAI realtime API with tool use
 
-This is a fork of the example application showing how to use the [OpenAI Realtime API](https://platform.openai.com/docs/guides/realtime) with [WebRTC](https://platform.openai.com/docs/guides/realtime-webrtc). This version uses Express JS with Vite instead of Fastify, as Fastify was not working correctly with Windows paths. Here is the official version [https://github.com/openai/openai-realtime-console](https://github.com/openai/openai-realtime-console).
-
-I put this together for those who want to test locally and cannot get the Fastify instance working correctly. I spent far too much time debugging the fastify path issues LOL... updating to use Express was much easier!!
+This is a fork of the example application showing how to use the [OpenAI Realtime API](https://platform.openai.com/docs/guides/realtime) with [WebRTC](https://platform.openai.com/docs/guides/realtime-webrtc). This version uses Express JS with Vite instead of Fastify, as Fastify was not working correctly with Windows paths.
 
 ## Installation and usage
 
